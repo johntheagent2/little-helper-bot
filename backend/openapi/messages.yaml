@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: LittleHelper Backend API
+  version: "0.1.0"
+  description: >
+    Hand-written first per docs/analysis-phase.md decision #6 (contract-first).
+    Describes the one endpoint bot/ currently calls (POST /messages) plus the
+    health check. Mirrors bot/src/modules/messaging-gateway/domain/BackendGateway.ts
+    exactly — that file's BackendMessageRequest/BackendMessageResponse types and
+    this spec's schemas must be kept in sync by hand until openapi-typescript
+    generation is wired up on the bot side.
+
+servers:
+  - url: http://localhost:5291
+    description: Local dev
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /messages:
+    post:
+      summary: Handle one inbound message forwarded by bot/
+      description: >
+        Called for every inbound message, regardless of platform or command.
+        The backend resolves/creates the internal user record and owns all
+        command parsing and feature state — the bot does none of that.
+      operationId: postMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BackendMessageRequest"
+      responses:
+        "200":
+          description: Reply text to relay back to the user, verbatim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackendMessageResponse"
+        "400":
+          description: Unrecognized platform value
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+
+components:
+  schemas:
+    BackendMessageRequest:
+      type: object
+      required: [platform, platformUserId, text]
+      properties:
+        platform:
+          type: string
+          enum: [telegram]
+          description: Only "telegram" is live in Phase 1 (see docs/analysis-phase.md decision #1).
+        platformUserId:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        text:
+          type: string
+
+    BackendMessageResponse:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string

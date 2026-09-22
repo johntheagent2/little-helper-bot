@@ -1,0 +1,18 @@
+@LittleHelper.Api_HostAddress = http://localhost:5291
+
+GET {{LittleHelper.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+POST {{LittleHelper.Api_HostAddress}}/messages
+Content-Type: application/json
+
+{
+  "platform": "telegram",
+  "platformUserId": "12345",
+  "displayName": "Test User",
+  "text": "hello"
+}
+
+###

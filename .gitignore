@@ -2,6 +2,16 @@ node_modules/
 dist/
 .env.local
 
+# .NET
+bin/
+obj/
+backend/**/data/
+*.db
+*.db-shm
+*.db-wal
+.vs/
+*.user
+
 #Documents
 docs/
 CLAUDE.md
