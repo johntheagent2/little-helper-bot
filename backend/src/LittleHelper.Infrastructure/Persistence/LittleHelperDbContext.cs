@@ -1,3 +1,4 @@
+using LittleHelper.Domain.CycleTracking;
 using LittleHelper.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,7 @@ public sealed class LittleHelperDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<CycleLog> CycleLogs => Set<CycleLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,6 +22,14 @@ public sealed class LittleHelperDbContext : DbContext
             entity.Property(u => u.Platform).HasConversion<string>().IsRequired();
             entity.Property(u => u.PlatformUserId).IsRequired();
             entity.HasIndex(u => new { u.Platform, u.PlatformUserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<CycleLog>(entity =>
+        {
+            entity.ToTable("CycleLogs");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.StartDate).IsRequired();
+            entity.HasIndex(c => new { c.UserId, c.StartDate });
         });
     }
 }

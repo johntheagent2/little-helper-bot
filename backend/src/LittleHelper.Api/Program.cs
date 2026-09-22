@@ -1,3 +1,4 @@
+using LittleHelper.Domain.CycleTracking;
 using LittleHelper.Domain.Messaging;
 using LittleHelper.Infrastructure.DependencyInjection;
 using LittleHelper.Infrastructure.Persistence;
@@ -18,6 +19,8 @@ if (!string.IsNullOrEmpty(dbDirectory))
 }
 
 builder.Services.AddInfrastructure(connectionString);
+builder.Services.AddScoped<CycleTrackingService>();
+builder.Services.AddScoped<ICommandHandler, CycleTrackingCommandHandler>();
 builder.Services.AddScoped<MessageHandler>();
 builder.Services.AddControllers();
 

@@ -15,10 +15,16 @@ backend/
   src/
     LittleHelper.Domain/          no I/O, no framework deps
       Users/                      User entity, PlatformType, IUserRepository port
-      Messaging/                  IncomingMessage, MessageHandler (resolve-or-create
-                                   user + reply — no command routing yet)
+      Messaging/                  IncomingMessage, ICommandHandler port, MessageHandler
+                                   (resolve-or-create user, dispatch to whichever
+                                   ICommandHandler claims the leading command token)
+      CycleTracking/               CycleLog, CyclePrediction, CycleMutationResult,
+                                   ICycleLogRepository port, CyclePredictor (pure
+                                   calculation), CycleTrackingService,
+                                   CycleTrackingCommandHandler (owns all cycle commands)
     LittleHelper.Infrastructure/  EF Core + SQLite
-      Persistence/                LittleHelperDbContext, UserRepository, Migrations/
+      Persistence/                LittleHelperDbContext, UserRepository, CycleLogRepository,
+                                   Migrations/
       DependencyInjection/        AddInfrastructure(IServiceCollection, connectionString)
     LittleHelper.Api/             ASP.NET Core (Kestrel), controller-based
       Program.cs                  wires DI, runs migrations on startup, maps controllers
@@ -29,8 +35,8 @@ backend/
 
 ## What's built vs. what's next
 
-- **Built**: solution + project wiring, EF Core/SQLite persistence (auto-migrates on startup, creates its own `data/` dir), `POST /messages` (resolves-or-creates the calling user, returns a placeholder reply), `GET /health`. Verified end to end against the exact request/response shapes `bot/`'s `HttpBackendGateway.ts` sends.
-- **Not built yet**: real command parsing/routing (every message currently gets the same placeholder reply), the cycle-tracking and reminders domains, the outbound HTTP client the backend will need to call bot's `POST /internal/notify` for push delivery, and API-key/auth enforcement on `/messages` (bot sends `Authorization: Bearer <BACKEND_API_KEY>` only if that env var is set — not yet validated here).
+- **Built**: solution + project wiring, EF Core/SQLite persistence (auto-migrates on startup, creates its own `data/` dir), `POST /messages` (resolves-or-creates the calling user, returns a placeholder reply), `GET /health`. Verified end to end against the exact request/response shapes `bot/`'s `HttpBackendGateway.ts` sends. Cycle tracking is wired up behind seven commands (dates as `yyyy-MM-dd` throughout) — `/logcycle [start [end]]` logs a `CycleLog` and returns a prediction (start date defaults to today, server-UTC, if omitted), `/cycle` returns the current prediction without logging, `/cyclehistory [count]` lists the last N logged cycles most-recent-first (1–12, default 3, clamped rather than rejected if a larger count is requested or more than exist), `/editcycle <wrong> <correct>` fixes a mistyped start date in place, `/deletecycle <start>` removes a specific entry, `/undo` removes whichever entry was *logged* most recently (by `LoggedAt`, so undoing after an edit removes the edited entry even if its `StartDate` isn't the newest), `/help` lists all of them. `CyclePredictor` derives next period date, fertile window, and average cycle length from up to the 6 most recent logs (implausible gaps outside 15–45 days are excluded from the average; a 28-day default is used until there's at least one gap to average). Note: SQLite's EF Core provider can't translate `ORDER BY` on `DateTimeOffset` (`LoggedAt`), so the two lookups that need most-recently-logged ordering sort client-side after fetching — fine at this app's scale, would need revisiting under real load. No reminders/notifications wired to any of this yet.
+- **Not built yet**: reminders (scheduling/recurrence/due-detection) and its outbound HTTP client to call bot's `POST /internal/notify` for push delivery, and API-key/auth enforcement on `/messages` (bot sends `Authorization: Bearer <BACKEND_API_KEY>` only if that env var is set — not yet validated here).
 - **Not designed yet**: TLS termination on the shared Compute Engine VM (see `docs/analysis-phase.md`'s hosting revision — Caddy/nginx + Let's Encrypt needed in front of both this and `bot/`'s Kestrel/Fastify ports).
 
 ## Local dev
